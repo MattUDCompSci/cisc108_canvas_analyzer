@@ -34,22 +34,18 @@ __version__ = 7
 
 def print_user_info(user_dict: dict):
     print("Name:", user_dict['name'])
-    print()
     print("Title:", user_dict['title'])
-    print()
-    print("Email:", user_dict['primary_email'])
-    print()
+    print("Primary Email:", user_dict['primary_email'])
     print("Bio:", user_dict['bio'])
-    print()
 def filter_available_courses(course_list):
+    available_courses = []
     for course in course_list:
-        course['workflow_state'] = "available"
-    return course_list
+        if course['workflow_state'] == "available":
+            available_courses.append(course)
+    return available_courses
 def print_courses(course_list):
     for course in course_list:
-        print("Course name:", course['name'])
-        print("Course ID:", course['id'])
-        print()
+        print(course['id'], ":", course['name'])
 def get_course_ids(course_list):
     course_id = []
     for course in course_list:
@@ -65,48 +61,56 @@ def choose_course(course_ids):
 def summarize_points(submissions):
     possible_point_sum = 0
     submission_points = 0
-    group_weight = 0
     for assignment in submissions:
-        if assignment['score'] == None:
-            pass
-        else:
-            possible_point_sum = possible_point_sum + assignment['assignment']['points_possible']
-            submission_points = submission_points + assignment['score']
-            group_weight = group_weight + assignment['assignment']['group']['group_weight']
-    print()
-    print("Possible Points:", possible_point_sum * group_weight)
-    print("Points Obtained", submission_points*group_weight)
-    print("Current Grade:", 100*(submission_points/possible_point_sum))
-    print()
+        if assignment['score'] != None:
+            possible_point_sum = possible_point_sum + (assignment['assignment']['points_possible']*assignment['assignment']['group']['group_weight'])
+            submission_points = submission_points + (assignment['score']*assignment['assignment']['group']['group_weight'])
+    print("Points Possible so far:", possible_point_sum)
+    print("Points Obtained", submission_points)
+    print("Current Grade:", round(100*(submission_points/possible_point_sum)))
 def summarize_groups(submissions):
+    name_list = []
+    total_score = []
+    running_score = 0
+    running_weight = 0
+    marker = 0
     for submission in submissions:
-        print("Group:", submission['assignment']['group']['name'])
-        if submission['score'] == None:
-            print("No Grade")
-            print()
-        else:
-            print("Grade", 100*submission['score']/submission['assignment']['group']['group_weight'])
-            print()
+        if submission['assignment']['group']['name'] not in name_list:
+            name_list.append(submission['assignment']['group']['name'])
+    for submission in submissions:
+        for group in name_list:
+            if submission['assignment']['group']['name'] == group and submission['score'] != None:
+                running_score = running_score + submission['score']
+                running_weight = running_weight + submission['assignment']['group']['group_weight']
+        total_score.append(100*running_score/running_weight)
+    for group in name_list:
+        print(group, ":", total_score[marker])
+        marker = marker + 1
 def plot_scores(submissions):
     scores = []
     for submission in submissions:
-        if submission['score'] != None:
+        if submission['score'] != None and submission['assignment']['points_possible'] != 0:
             scores.append(100*submission['score']/submission['assignment']['points_possible'])
     plt.hist(scores)
-    plt.title("Grade Distribtions")
+    plt.title("Distribution of Grades")
     plt.xlabel("Grades")
     plt.ylabel("Number of Assignments")
     plt.show()
 def plot_grade_trends(submissions):
-    print(submissions)
     max_points = 0
     max_points_list = []
+    running_max_points_list = []
+    final_max_points_list = []
     running_sum_max = 0
     low_points = 0
     low_points_list = []
+    running_low_points_list = []
+    final_low_points_list = []
     running_sum_low = 0
     high_points = 0
     high_points_list = []
+    running_high_points_list = []
+    final_high_points_list = []
     running_sum_high = 0
     max_score = 0
     for submission in submissions:
@@ -115,7 +119,7 @@ def plot_grade_trends(submissions):
         max_points_list.append(max_points)
         if submission['score'] == None:
             low_points = 0
-            high_points = submission['assignment']['points_possible']
+            high_points = 100 * submission['assignment']['points_possible'] * submission['assignment']['group']['group_weight']
             low_points_list.append(low_points)
             high_points_list.append(high_points)
         elif submission['score'] != None:
@@ -125,25 +129,25 @@ def plot_grade_trends(submissions):
             high_points_list.append(high_points)
     for point in max_points_list:
         running_sum_max = running_sum_max + point
+        running_max_points_list.append(running_sum_max)
     for point in low_points_list:
         running_sum_low = running_sum_low + point
+        running_low_points_list.append(running_sum_low)
     for point in high_points_list:
         running_sum_high = running_sum_high + point
+        running_high_points_list.append(running_sum_high)
     max_score = running_sum_max / 100
-    print(running_sum_max)
-    print(running_sum_low)
-    print(running_sum_high)
-    print(max_score)
-    for point in max_points_list:
-        point = point / max_score
-    for point in low_points_list:
-        point = point / max_score
-    for point in high_points_list:
-        point = point / max_score
-    plt.plot(high_points_list, label="High")
-    plt.plot(low_points_list, label="Low")
-    plt.plot(max_points_list, label="Max")
+    for point in running_max_points_list:
+        final_max_points_list.append(point / max_score)
+    for point in running_low_points_list:
+        final_low_points_list.append(point / max_score)
+    for point in running_high_points_list:
+        final_high_points_list.append(point / max_score)
+    plt.plot(final_high_points_list, label="High")
+    plt.plot(final_low_points_list, label="Low")
+    plt.plot(final_max_points_list, label="Max")
     plt.title("Grade Trends")
+    plt.ylabel("Grade")
     plt.legend()
     plt.show()
 def main(name):
